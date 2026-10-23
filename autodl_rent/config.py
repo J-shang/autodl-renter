@@ -105,6 +105,12 @@ def load_config(path: Path) -> Config:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise ConfigError(f"无法读取配置 {path}: {exc}") from None
+    return config_from_dict(raw, path)
+
+
+def config_from_dict(raw: dict, path: Path) -> Config:
+    """Validate before writing new configurations, using the same execution rules."""
+    path = path.expanduser().resolve()
     keys(raw, "targets stop image poll state_file max_wait_seconds selection max_total_price_per_hour", "配置")
     stop = keys(raw.get("stop", {}), "policy total_instances", "stop")
     policy = stop.get("policy", "any")

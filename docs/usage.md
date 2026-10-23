@@ -1,18 +1,18 @@
 # 使用与任务恢复
 
-[返回首页](../README.md) · [配置说明](configuration.md) · [隐私与本地文件](privacy.md)
+[返回首页](../README.md) · [配置说明](configuration.md) · [Agent 使用](agents.md) · [隐私与本地文件](privacy.md)
 
 ## 开始使用
 
-以下命令均在仓库根目录执行：
+已有 Python 3.9+ 就能运行，不需要安装项目或依赖。下载并解压仓库（或 clone）后，以下命令均在仓库根目录执行；Windows 可将 `python3` 换成 `py -3` 或本机 `python`。
 
 ```bash
 # 可选：先运行离线演示，无网络请求，不产生费用
 python3 -m autodl_rent demo --policy any
 python3 -m autodl_rent demo --policy all
 
-# 1. 在本机隐藏输入网页登录 Token，并只读验证
-python3 -m autodl_rent auth
+# 1. 用已关联 AutoDL 账号的微信扫码登录
+python3 -m autodl_rent login
 
 # 2. 按提示选择地区、型号、数量、价格、停止策略和基础镜像
 python3 -m autodl_rent init
@@ -24,20 +24,24 @@ python3 -m autodl_rent run
 python3 -m autodl_rent run --execute
 ```
 
-`auth` 使用**主账号网页登录 Token**。在已登录的 [AutoDL 市场](https://www.autodl.com/market/list) 打开浏览器开发者工具的 Console，执行 `copy(localStorage.getItem('token'))`，再粘贴到本机脚本的隐藏输入中。也可以通过本机环境变量 `AUTODL_WEB_TOKEN` 提供。不要把 Token 填入配置或发送到聊天中。这里不是控制台中的开发者 API Token。
+`login` 默认通过 Python HTTPS 请求获取 AutoDL 原生登录二维码，自动在本机打开图片；需要手动打开时加 `--no-open`。账号必须已关联该微信。默认最长等待 300 秒，可用 `--timeout` 调整。扫码成功后只读验证登录并保存认证，无需 Playwright。
 
-认证默认保存在项目 `.local/auth.json`，macOS/Linux 上文件权限为 `600`；`.local/` 已加入 Git 忽略。环境变量优先于认证文件。使用其他认证文件时，将全局参数放在子命令前，例如 `python3 -m autodl_rent --auth-file /path/auth.json run`。
+也可以运行 `auth`，隐藏输入**主账号网页登录 Token**。在已登录的 [AutoDL 市场](https://www.autodl.com/market/list) 打开浏览器开发者工具的 Console，执行 `copy(localStorage.getItem('token'))`，再粘贴到本机终端。或通过本机环境变量 `AUTODL_WEB_TOKEN` 提供，`auth` 会直接使用它。不要把 Token 填入配置或发送到聊天中。这里不是控制台中的开发者 API Token。
+
+认证默认保存在项目 `.local/auth.json`，macOS/Linux 上文件权限为 `600`；`.local/` 已加入 Git 忽略。环境变量优先于认证文件。使用其他认证文件时可加 `--auth-file /path/auth.json`；也可用 `AUTODL_RENT_HOME` 改变认证、二维码和可选浏览器配置的默认目录。`--auth-file`、`--config`、`--json` 和 `--non-interactive` 均可放在子命令前后。
+
+`python3 -m autodl_rent doctor` 离线检查本机认证和配置；加 `--online` 只读核对连接与登录。`validate` 检查当前任务配置和状态；`validate --online` 进一步核对地区、型号和镜像，不创建实例。
 
 ### 可选：弹出浏览器手动登录
 
-如果不想复制 Token，可以安装可选登录助手：
+默认扫码不需要此步骤。如果需要在独立浏览器中登录，可安装可选助手：
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -r requirements-login.txt
 python3 -m playwright install chromium
-python3 -m autodl_rent login
+python3 -m autodl_rent login --method browser
 ```
 
 在弹出的独立浏览器中手动完成登录和验证码。程序随后验证并保存 Token；不自动处理验证码。已有 Chrome 也可以使用 `login --browser chrome`。登录配置目录在 `.local/browser-profile/`，包含登录状态。安装方法依据 [Playwright Python 文档](https://playwright.dev/python/docs/library)。
@@ -45,12 +49,20 @@ python3 -m autodl_rent login
 ## 纯程序快速抢租：西北B区、低于1元、成功一个就停
 
 ```bash
-python3 -m autodl_rent.quick_rent --execute
+python3 -m autodl_rent quick            # 只预览
+python3 -m autodl_rent quick --execute  # 实际租用
 ```
 
-这个专用入口直接通过 Python HTTPS 请求登录、查询、报价和创建，不使用 computer use，也不读取 Chrome 私有数据。若没有本机 Token，会生成 `.local/autodl-rent-login-qr.jpg`，用微信扫描这张 AutoDL 原生登录二维码即可；Token 仅保留在进程内。账号必须已经关联该微信。
+这个预设直接通过 Python HTTPS 请求查询、报价和创建，不使用 computer use，也不读取 Chrome 私有数据。先用统一的 `login` 命令扫码登录即可。它自动创建 `config.west-under1.local.json`，状态保存在 `.local/west-under1.state.json`。
 
-条件固定为西北B区、GPU 或 CPU 均可、一个单资源单位实例、小时原价严格低于 1 元，成功一个即停止。用 `0.999` 元上限排除恰好 1 元的资源。采用基础 Miniconda 镜像，不扩容付费数据盘。登录后最多等待 1800 秒，可用 `--wait-seconds` 调整；省略 `--execute` 只预览。程序保存任务配置与状态，同一任务重复运行不会重复租用。
+条件固定为西北B区、GPU 或 CPU 均可、一个单资源单位实例、小时原价严格低于 1 元，成功一个即停止。用 `0.999` 元上限排除恰好 1 元的资源。采用基础 Miniconda 镜像，不扩容付费数据盘。默认每次最多等待 1800 秒，可用 `--wait-seconds` 调整；省略 `--execute` 只预览。程序保存任务配置与状态，同一任务重复运行不会重复租用。查看或恢复这个任务时指定其配置：
+
+```bash
+python3 -m autodl_rent status --config config.west-under1.local.json
+python3 -m autodl_rent resolve --config config.west-under1.local.json
+```
+
+旧入口 `python3 -m autodl_rent.quick_rent` 仍保留，使用已有配置和状态格式。它缺少认证时会临时扫码，Token 仅保留在进程内。新任务优先使用统一的 `quick` 命令。
 
 CPU 型号支持 `CPU` 和 `CPU-close-HT`。CPU 的 `gpus_per_instance: 1` 表示一个平台资源单位，实际核心数与内存由主机分配；CPU 不要求显卡或 CUDA 驱动元数据。设置了正的 `min_gpu_memory_gb` 时不会匹配 CPU。
 

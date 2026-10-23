@@ -26,6 +26,19 @@ python3 -m autodl_rent init --template
 
 模板中的价格是**配置示例，不是当前市场报价**。模板的 `image.uuid` 留空，需要先选择实际镜像，才允许真实执行。
 
+给 agent 或脚本使用时，可以完全通过参数离线生成配置：
+
+```bash
+python3 -m autodl_rent init --config config.job.local.json \
+  --region '西北B区' --gpu 'RTX 4090' --max-price 3 --budget 3 \
+  --quantity 1 --policy any --image IMAGE_UUID --cuda 12.8 --json
+python3 -m autodl_rent validate --config config.job.local.json --json
+```
+
+`IMAGE_UUID` 需要替换成目录中的实际镜像 UUID，并填写该镜像的 CUDA 版本。`--region` 和 `--gpu` 可以重复；每种 `--gpu` 建立一个独立目标，共用给定地区、单价和配额。不同目标需要不同条件时直接编辑 JSON。`--policy total` 必须配 `--total N`。生成前会验证完整配置，不覆盖已有文件，也不复用已有记录的状态路径。完整选项见 `init --help` 和 [Agent 使用](agents.md)。
+
+执行时的 `run --wait-seconds N` 仅覆盖这次等待时长，不改写配置或重置进度。编辑器可使用 [config.schema.json](../autodl_rent/resources/config.schema.json)；也能通过 `python3 -m autodl_rent agent schema` 获取。
+
 主要字段：
 
 | 字段 | 含义 |

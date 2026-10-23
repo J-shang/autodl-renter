@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AutoDL renter task configuration",
+  "description": "Editor and agent schema. The Python validator additionally enforces cross-field quotas, unique target names, path separation and runtime image compatibility.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["targets", "image", "max_total_price_per_hour"],
+  "properties": {
+    "targets": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/target"}},
+    "stop": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "policy": {"enum": ["any", "all", "total"], "default": "any"},
+        "total_instances": {"type": "integer", "minimum": 1, "maximum": 10000, "default": 1}
+      }
+    },
+    "selection": {"enum": ["priority", "cheapest"], "default": "priority"},
+    "max_total_price_per_hour": {"$ref": "#/$defs/money"},
+    "max_wait_seconds": {"type": "number", "minimum": 1, "maximum": 31536000, "default": 1800},
+    "state_file": {"type": "string", "minLength": 1, "default": ".local/autodl-state.json"},
+    "image": {
+      "type": "object", "additionalProperties": false,
+      "required": ["uuid", "cuda_version", "chip_corp", "cpu_arch"],
+      "properties": {
+        "kind": {"enum": ["base", "private"], "default": "base"},
+        "uuid": {"type": "string", "description": "May be empty in templates; execution requires a real image UUID."},
+        "cuda_version": {"type": "string", "pattern": "^[0-9]{1,2}(\\.[0-9]{1,2})?$"},
+        "chip_corp": {"const": "nvidia"},
+        "cpu_arch": {"const": "x86"}
+      }
+    },
+    "poll": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "interval_seconds": {"type": "number", "minimum": 5, "maximum": 3600, "default": 10},
+        "jitter_seconds": {"type": "number", "minimum": 0, "maximum": 600, "default": 3},
+        "request_gap_seconds": {"type": "number", "minimum": 0.5, "maximum": 60, "default": 1},
+        "timeout_seconds": {"type": "number", "minimum": 1, "maximum": 120, "default": 20},
+        "max_backoff_seconds": {"type": "number", "minimum": 5, "maximum": 3600, "default": 120},
+        "confirm_timeout_seconds": {"type": "number", "minimum": 1, "maximum": 600, "default": 90},
+        "page_size": {"type": "integer", "minimum": 1, "maximum": 90, "default": 90},
+        "max_pages": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 20}
+      }
+    }
+  },
+  "$defs": {
+    "money": {"oneOf": [{"type": "number", "exclusiveMinimum": 0}, {"type": "string", "pattern": "^(?=.*[1-9])[0-9]+(\\.[0-9]+)?$"}]},
+    "strings": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "regions", "gpu_models", "max_price_per_gpu_hour"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "regions": {"$ref": "#/$defs/strings"},
+        "gpu_models": {"$ref": "#/$defs/strings"},
+        "quantity": {"type": "integer", "minimum": 1, "maximum": 10000, "default": 1},
+        "gpus_per_instance": {"type": "integer", "minimum": 1, "maximum": 16, "default": 1},
+        "max_price_per_gpu_hour": {"$ref": "#/$defs/money"},
+        "min_gpu_memory_gb": {"type": "number", "minimum": 0, "maximum": 1000000000, "default": 0},
+        "min_cpu_per_gpu": {"type": "number", "minimum": 0, "maximum": 1000000000, "default": 0},
+        "min_memory_per_gpu_gb": {"type": "number", "minimum": 0, "maximum": 1000000000, "default": 0}
+      }
+    }
+  }
+}

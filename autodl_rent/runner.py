@@ -102,6 +102,9 @@ class Runner:
         self.gpus = {}
         self.price_models = {}
         self.price_scan_at = {}
+        self.preview = []
+        self.preview_count = 0
+        self.last_error = None
 
     def prepare(self):
         regions = self.api.regions()
@@ -267,8 +270,10 @@ class Runner:
         while self.clock() < self.deadline:
             try:
                 self.prepare()
+                self.last_error = None
                 break
             except APIError as exc:
+                self.last_error = exc
                 if not exc.transient:
                     raise
                 initialization_failures += 1
@@ -296,10 +301,9 @@ class Runner:
                 for target, offer in self.candidates():
                     matches += 1
                     if not self.execute:
-                        if matches <= 20:
-                            LOG.info("候选 %s | %s | %s × %d | ¥%s/时 | 主机 %s", offer["target"],
-                                     offer["region_name"], offer["gpu_model"], offer["gpus"],
-                                     offer["price_per_hour"], offer["machine_id"])
+                        self.preview_count += 1
+                        if len(self.preview) < 100:
+                            self.preview.append(offer)
                         continue
                     if self.state.done():
                         return 0
@@ -316,7 +320,9 @@ class Runner:
                 if not self.execute:
                     return 0
                 failures = 0
+                self.last_error = None
             except APIError as exc:
+                self.last_error = exc
                 if not exc.transient:
                     raise
                 failures += 1
@@ -324,7 +330,7 @@ class Runner:
                                                   delay * 2 ** min(failures, 10)))
                 LOG.warning("读取失败 (%s)，退避 %.1f 秒", exc.code, delay)
             if once or not self.execute:
-                return 3 if self.execute else 0
+                return 3 if self.execute else 2
             self.wait(delay + self.jitter(0, self.config.poll["jitter_seconds"]))
         LOG.info("达到 max_wait_seconds，停止等待；已租实例继续按平台规则计费")
         return 3

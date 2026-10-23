@@ -1,0 +1,46 @@
+name: Offline tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.9'
+          - os: ubuntu-latest
+            python: '3.14'
+          - os: macos-latest
+            python: '3.12'
+          - os: windows-latest
+            python: '3.12'
+    env:
+      PYTHONUTF8: '1'
+      AUTODL_WEB_TOKEN: ''
+      AUTODL_RENT_HOME: ${{ runner.temp }}/autodl-renter-private
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Run without site-packages
+        run: python -S -m autodl_rent demo --json --quiet
+      - name: Discover agent interface
+        run: python -S -m autodl_rent agent --json
