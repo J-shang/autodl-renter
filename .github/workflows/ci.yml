@@ -30,7 +30,7 @@ jobs:
     env:
       PYTHONUTF8: '1'
       AUTODL_WEB_TOKEN: ''
-      AUTODL_RENT_HOME: ${{ runner.temp }}/autodl-renter-private
+      AUTODL_RENT_HOME: .local
     steps:
       - uses: actions/checkout@v7
         with:
