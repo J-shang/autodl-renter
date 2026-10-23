@@ -70,6 +70,6 @@ def login_with_qr(api: AutoDL, path: Path, *, timeout: float = 300,
             # The caller decides whether to persist it; the rental job keeps it in memory.
             return auth["token"]
         if isinstance(data, dict) and data.get("openId") and not data.get("ticket"):
-            raise ConfigError("该微信尚未关联 AutoDL 账号，请先在官方页面完成账号关联")
+            raise ConfigError("该微信尚未关联 AutoDL 账号。可运行 python3 -m autodl_rent auth 导入网页登录 Token，无需绑定微信；也可在官方页面关联账号后重新扫码")
         sleep(min(3, max(0, end - clock())))
     raise ConfigError("扫码登录等待超时，未发起任何租用")

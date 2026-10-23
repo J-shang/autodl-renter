@@ -11,7 +11,7 @@
 python3 -m autodl_rent demo --policy any
 python3 -m autodl_rent demo --policy all
 
-# 1. 通过已关联 AutoDL 账号的微信扫码登录
+# 1. 微信扫码登录；未关联微信时改为 python3 -m autodl_rent auth
 python3 -m autodl_rent login
 
 # 2. 按提示选择地区、型号、数量、价格、停止策略和基础镜像
@@ -24,9 +24,30 @@ python3 -m autodl_rent run
 python3 -m autodl_rent run --execute
 ```
 
-`login` 默认通过 Python HTTPS 请求获取 AutoDL 原生登录二维码，自动在本机打开图片；需要手动打开时加 `--no-open`。账号必须已关联该微信。默认最长等待 300 秒，可用 `--timeout` 调整。扫码成功后只读验证登录并保存认证，无需 Playwright。
+### 微信扫码登录
 
-也可运行 `auth`，以隐藏输入方式提供**主账号网页登录 Token**。在已登录的 [AutoDL 市场](https://www.autodl.com/market/list) 打开浏览器开发者工具的 Console，执行 `copy(localStorage.getItem('token'))`，再粘贴至本机终端。也可通过本机环境变量 `AUTODL_WEB_TOKEN` 提供，`auth` 会优先读取该变量。Token 不应写入任务配置或通过聊天发送。此处使用网页登录 Token，与控制台中的开发者 API Token 不同。
+`login` 默认通过 Python HTTPS 请求获取 AutoDL 原生登录二维码，自动在本机打开图片；需要手动打开时加 `--no-open`。账号必须已关联该微信。默认最长等待 300 秒，可用 `--timeout` 调整。扫码成功后只读验证登录并保存认证，无需 Playwright。未关联微信的账号可使用下述网页登录 Token 认证，无需完成微信绑定。
+
+### 网页登录 Token 认证
+
+该方式使用已有网页登录会话，不要求账号关联微信：
+
+1. 在本机浏览器登录 [AutoDL](https://www.autodl.com/login)，进入 [算力市场](https://www.autodl.com/market/list)。
+2. 打开浏览器开发者工具的 Console，执行以下命令，将网页登录 Token 复制到剪贴板：
+
+   ```javascript
+   copy(localStorage.getItem('token'))
+   ```
+
+3. 在本机终端执行认证命令：
+
+   ```bash
+   python3 -m autodl_rent auth
+   ```
+
+4. 将剪贴板内容粘贴至隐藏输入并回车。程序会只读验证 Token，验证通过后保存至本机认证文件。
+
+认证使用**主账号网页登录 Token**，与控制台中的开发者 API Token 不同。也可通过本机环境变量 `AUTODL_WEB_TOKEN` 提供，`auth` 会优先读取该变量。Token 不应写入任务配置、命令参数或通过聊天发送。如果浏览器返回空值或 `null`，应先确认该页面已登录 AutoDL，再重新获取。
 
 认证默认保存在项目 `.local/auth.json`，macOS/Linux 上文件权限为 `600`；`.local/` 已加入 Git 忽略。环境变量优先于认证文件。使用其他认证文件时可加 `--auth-file /path/auth.json`；也可用 `AUTODL_RENT_HOME` 改变认证、二维码和可选浏览器配置的默认目录。`--auth-file`、`--config`、`--json` 和 `--non-interactive` 均可放在子命令前后。
 
@@ -53,7 +74,7 @@ python3 -m autodl_rent quick            # 预览
 python3 -m autodl_rent quick --execute  # 执行租用任务
 ```
 
-该预设通过 Python HTTPS 请求完成库存查询、报价与实例创建，无需界面自动化，也不读取浏览器私有数据。运行前需使用 `login` 命令完成认证。配置保存为 `config.west-under1.local.json`，状态保存于 `.local/west-under1.state.json`。
+该预设通过 Python HTTPS 请求完成库存查询、报价与实例创建，无需界面自动化，也不读取浏览器私有数据。运行前需使用 `login` 或 `auth` 完成认证。配置保存为 `config.west-under1.local.json`，状态保存于 `.local/west-under1.state.json`。
 
 固定条件为西北B区、GPU 或 CPU、一个单资源单位实例、小时原价严格低于 1 元。创建并确认一个实例后，任务停止。价格上限设为 `0.999` 元，以排除恰好 1 元的资源。预设采用基础 Miniconda 镜像，不扩容付费数据盘。默认每次最多等待 1800 秒，可通过 `--wait-seconds` 调整；未指定 `--execute` 时仅预览库存。任务配置与状态会持久化，重复运行同一任务不会重复创建已完成的实例。查看或恢复该任务时需指定其配置：
 

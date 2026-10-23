@@ -58,7 +58,7 @@ def validate_token(token: str) -> str:
 def make_api(args, *, required=False, config=None) -> AutoDL:
     token = read_token(args.auth_file)
     if required and not token:
-        raise ConfigError("尚未登录：请运行 login 扫码，或在本机设置 AUTODL_WEB_TOKEN；不要把 Token 发给 agent")
+        raise ConfigError("尚未认证：已关联微信可运行 login；未关联微信可运行 auth 输入网页登录 Token，或在本机设置 AUTODL_WEB_TOKEN；Token 不应通过聊天发送")
     poll = config.poll if config else {}
     api = AutoDL(token, timeout=poll.get("timeout_seconds", 20), request_gap=poll.get("request_gap_seconds", 1))
     try:
@@ -83,7 +83,7 @@ def authenticate(args):
     token = validate_token(os.environ.get("AUTODL_WEB_TOKEN", ""))
     if not token:
         if args.non_interactive:
-            raise ConfigError("非交互 auth 需要本机 AUTODL_WEB_TOKEN；也可以运行 login --no-open 扫码")
+            raise ConfigError("非交互 auth 需要本机 AUTODL_WEB_TOKEN；未设置时，请在本机终端运行 auth，通过隐藏输入提供网页登录 Token")
         say(args, "在已登录的 AutoDL 网页开发者工具 Console 执行：copy(localStorage.getItem('token'))")
         say(args, "在下方粘贴结果（隐藏输入；不要将 Token 发到聊天中）。")
         token = validate_token(getpass.getpass("AutoDL 网页登录 Token: "))
@@ -99,7 +99,7 @@ def browser_login(args):
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        raise ConfigError("浏览器登录是可选功能，需要 Playwright；免安装使用请直接运行 login 扫码") from None
+        raise ConfigError("浏览器登录助手需要可选依赖 Playwright；无需安装依赖的方式为 auth 导入网页登录 Token，或 login 使用已关联微信扫码") from None
     profile = args.auth_file.parent / "browser-profile"
     profile.mkdir(parents=True, exist_ok=True)
     if os.name != "nt":
@@ -431,7 +431,7 @@ def add_common(item, *, root=False):
 
 def parser() -> argparse.ArgumentParser:
     root = Parser(prog="python3 -m autodl_rent", description="AutoDL 算力抢租 · 零依赖，默认预览，--execute 才会真实租用",
-                  epilog="无需安装，在源码目录直接运行。\n首次使用：demo → login → init → run → run --execute",
+                  epilog="无需安装，在源码目录直接运行。\n身份认证：login（已关联微信）或 auth（网页登录 Token，无需微信绑定）。\n使用流程：demo → 认证 → init → run → run --execute",
                   formatter_class=argparse.RawDescriptionHelpFormatter, allow_abbrev=False)
     root.add_argument("--version", action="version", version=f"autodl-renter {__version__}")
     add_common(root, root=True)
@@ -443,7 +443,7 @@ def parser() -> argparse.ArgumentParser:
         item.set_defaults(handler=handler)
         return item
 
-    command("auth", "隐藏输入或从环境变量读取网页登录 Token，并验证保存", authenticate)
+    command("auth", "导入并验证网页登录 Token，无需微信绑定", authenticate)
     item = command("login", "微信扫码登录（默认，零依赖），或选择浏览器登录", login)
     item.add_argument("--method", choices=("qr", "browser"), default="qr")
     item.add_argument("--browser", choices=("chromium", "chrome"), help="使用可选浏览器登录助手")

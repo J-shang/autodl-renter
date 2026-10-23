@@ -111,6 +111,19 @@ class CLITests(unittest.TestCase):
         self.assertNotIn(token, json.dumps(result) + err)
         self.assertEqual(json.loads(self.auth.read_text())["token"], token)
 
+    def test_web_token_auth_works_without_wechat_or_echoing_token(self):
+        token = "fictional-manual-web-token"
+        out, err = io.StringIO(), io.StringIO()
+        with patch("sys.stdin.isatty", return_value=True), patch("getpass.getpass", return_value=token), \
+                patch("autodl_rent.cli.AutoDL") as api, patch("autodl_rent.cli.login_with_qr") as qr, \
+                redirect_stdout(out), redirect_stderr(err):
+            code = main(["auth"])
+        self.assertEqual(code, 0)
+        api.return_value.images.assert_called_once_with()
+        qr.assert_not_called()
+        self.assertEqual(json.loads(self.auth.read_text())["token"], token)
+        self.assertNotIn(token, out.getvalue() + err.getvalue())
+
     def test_qr_login_emits_image_event_and_keeps_token_local(self):
         token = "fictional-scanned-token"
         image = self.folder / "test-login-qr.jpg"
@@ -311,6 +324,9 @@ class CLITests(unittest.TestCase):
         code, result, _ = self.call("agent")
         self.assertEqual(code, 0)
         self.assertEqual(result["data"]["entrypoint"], ["python3", "-m", "autodl_rent"])
+        methods = {item["command"]: item for item in result["data"]["commands"]}
+        self.assertFalse(methods["auth"]["requires_wechat_binding"])
+        self.assertTrue(methods["login"]["requires_wechat_binding"])
         schema = self.call("agent", "schema")[1]["data"]["schema"]
         self.assertEqual(schema, config_schema())
         pattern = schema["properties"]["image"]["properties"]["cuda_version"]["pattern"]

@@ -13,7 +13,9 @@ Use `--json --non-interactive` for programmatic calls. Stdout contains one JSON 
 
 Inspect `doctor --json`, then fetch the directories needed for the user's request with `catalog regions`, `catalog gpus`, and `catalog images`. Values must match complete catalog names or region signs. Prices in example files are illustrative, not current offers.
 
-Authentication remains local in `.local/auth.json`, an explicit `--auth-file`, or `AUTODL_WEB_TOKEN`. Do not print or ask the user to send tokens in chat. If login is needed, run `login --no-open --json` with a long enough process timeout; its stderr emits a `login_qr` event with an image path. Show that local image to the user and leave the process running while they scan. A QR login does not authorize paid rental.
+Authentication remains local in `.local/auth.json`, an explicit `--auth-file`, or `AUTODL_WEB_TOKEN`. Do not print or ask the user to send tokens in chat. Accounts without a linked WeChat can authenticate using a browser's existing AutoDL web session: have the user run `python3 -m autodl_rent auth` in their own terminal and paste the web login token into the hidden input. This needs no WeChat binding or extra dependency. `auth --json` is noninteractive and requires an existing local `AUTODL_WEB_TOKEN`.
+
+For accounts with a linked WeChat, run `login --no-open --json` with a long enough process timeout; its stderr emits a `login_qr` event with an image path. Show that local image to the user and leave the process running while they scan. If the QR flow reports an unlinked account, use local Token authentication instead of requiring the user to bind WeChat. Authentication does not authorize paid rental.
 
 Generate a new task without prompts, substituting the user's actual constraints and a real catalog image:
 

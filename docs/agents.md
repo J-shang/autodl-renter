@@ -62,7 +62,9 @@ python3 -m autodl_rent status --config config.job.local.json --json
 
 ## 登录与进程等待
 
-用户可在本机终端执行 `login`，也可由 Agent 发起登录进程：
+认证方式应根据账号情况选择。未关联微信的账号使用网页登录 Token 认证：由用户在浏览器登录 AutoDL，并在其本机终端执行 `python3 -m autodl_rent auth`，通过隐藏输入提供 Token。具体步骤见 [网页登录 Token 认证](usage.md#网页登录-token-认证)。Agent 不应要求用户通过聊天提供 Token；认证完成后，CLI 会自动读取本机认证文件，Agent 可继续调用任务命令。
+
+已关联微信的账号可在本机终端执行 `login`，也可由 Agent 发起扫码登录进程：
 
 ```bash
 python3 -m autodl_rent login --no-open --json
