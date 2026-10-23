@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="350" viewBox="0 0 1200 350" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">autodl-renter · 把等待交给命令行</title>
+  <desc id="description">零依赖的 AutoDL 算力抢租工具，支持 Python 3.9、条件筛选、任务恢复和 Agent。右侧展示离线预览示例，并非实时报价。</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1200" y2="350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18263C"/>
+      <stop offset="1" stop-color="#0B1120"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="604" y1="0" x2="1118" y2="350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#73E2C1" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#73E2C1" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" stroke="#BACBDD" stroke-opacity="0.045"/>
+    </pattern>
+    <clipPath id="bounds"><rect width="1200" height="350" rx="20"/></clipPath>
+  </defs>
+  <g clip-path="url(#bounds)">
+    <rect width="1200" height="350" fill="url(#background)"/>
+    <rect width="1200" height="350" fill="url(#grid)"/>
+    <circle cx="1038" cy="-110" r="420" fill="url(#accent)"/>
+    <path d="M488 350L770 0M654 350L936 0M820 350L1102 0" stroke="#73E2C1" stroke-opacity="0.045"/>
+    <path d="M0 349H1200" stroke="#73E2C1" stroke-opacity="0.22"/>
+    <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+      <g font-family="'SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="12" letter-spacing="2.4" fill="#8FE5CC">
+        <text x="56" y="64">AUTODL / COMMAND LINE TOOL</text>
+      </g>
+      <text x="54" y="143" font-size="61" font-weight="700" letter-spacing="-2.8" fill="#F3F7FC">autodl-renter</text>
+      <text x="57" y="190" font-family="'PingFang SC','Microsoft YaHei',sans-serif" font-size="23" font-weight="500" fill="#D6E1EF">把等待交给命令行。</text>
+      <text x="57" y="224" font-family="'PingFang SC','Microsoft YaHei',sans-serif" font-size="15" fill="#92A5BF">GPU / CPU · 条件筛选 · 断点续跑</text>
+      <g font-family="'SFMono-Regular',Consolas,'Liberation Mono',monospace" font-size="11" font-weight="500" letter-spacing="0.4">
+        <rect x="56" y="260" width="112" height="29" rx="7" fill="#73E2C1" fill-opacity="0.10" stroke="#73E2C1" stroke-opacity="0.22"/>
+        <text x="71" y="279" fill="#9CEBD5">PYTHON 3.9+</text>
+        <rect x="179" y="260" width="112" height="29" rx="7" fill="#FFFFFF" fill-opacity="0.035" stroke="#B7C9DE" stroke-opacity="0.16"/>
+        <text x="194" y="279" fill="#C3D0E2">ZERO DEPS</text>
+        <rect x="302" y="260" width="126" height="29" rx="7" fill="#FFFFFF" fill-opacity="0.035" stroke="#B7C9DE" stroke-opacity="0.16"/>
+        <text x="317" y="279" fill="#C3D0E2">AGENT READY</text>
+      </g>
+    </g>
+    <rect x="622" y="52" width="520" height="262" rx="14" fill="#050A14" fill-opacity="0.25"/>
+    <rect x="622" y="44" width="520" height="262" rx="14" fill="#111B2B" stroke="#34445A"/>
+    <path d="M636 44H1128A14 14 0 0 1 1142 58V84H622V58A14 14 0 0 1 636 44Z" fill="#1B283A"/>
+    <path d="M622 84H1142" stroke="#34445A"/>
+    <circle cx="644" cy="64" r="4" fill="#60738C"/>
+    <circle cx="659" cy="64" r="4" fill="#60738C"/>
+    <circle cx="674" cy="64" r="4" fill="#60738C"/>
+    <g font-family="'SFMono-Regular',Consolas,'Liberation Mono',monospace">
+      <text x="696" y="68" font-size="11" letter-spacing="1.2" fill="#A9B8CC">MARKET PREVIEW</text>
+      <rect x="1050" y="54" width="74" height="20" rx="5" fill="#73E2C1" fill-opacity="0.10"/>
+      <text x="1061" y="68" font-size="10" letter-spacing="0.6" fill="#9CEBD5">DRY RUN</text>
+      <text x="644" y="122" font-size="16" fill="#F0F5FC"><tspan fill="#8FE5CC">❯ </tspan>python3 -m autodl_rent run</text>
+      <g font-size="10" letter-spacing="1.4" fill="#8296B2">
+        <text x="645" y="160">MODEL</text>
+        <text x="833" y="160">REGION</text>
+        <text x="1010" y="160">PRICE / H</text>
+      </g>
+      <path d="M644 172H1120" stroke="#2C3B50"/>
+      <g font-size="15" fill="#DCE6F4">
+        <text x="645" y="199">RTX 4090</text>
+        <text x="834" y="199" font-family="'PingFang SC','Microsoft YaHei',sans-serif">西北B区</text>
+        <text x="1011" y="199" fill="#8FE5CC">¥2.00</text>
+        <text x="645" y="232">RTX 3090</text>
+        <text x="834" y="232" font-family="'PingFang SC','Microsoft YaHei',sans-serif">西北B区</text>
+        <text x="1011" y="232" fill="#8FE5CC">¥1.00</text>
+      </g>
+      <path d="M644 253H1120" stroke="#2C3B50"/>
+      <text x="645" y="280" font-size="10" letter-spacing="0.6" fill="#8296B2">OFFLINE DEMO<tspan font-family="'PingFang SC','Microsoft YaHei',sans-serif" letter-spacing="0"> · 示例结果，非实时报价</tspan></text>
+    </g>
+  </g>
+</svg>
