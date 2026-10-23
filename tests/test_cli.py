@@ -16,7 +16,7 @@ from autodl_rent.cli import main
 from autodl_rent.config import example_config, load_config
 from autodl_rent.demo import DemoAPI, demo_machine
 from autodl_rent.onboarding import choose_many
-from autodl_rent.output import config_schema
+from autodl_rent.output import Result, config_schema
 from autodl_rent.paths import ROOT
 from autodl_rent.state import State, write_private_json
 
@@ -97,9 +97,10 @@ class CLITests(unittest.TestCase):
         self.assertFalse(self.path.exists())
 
     def test_noninteractive_auth_never_reads_terminal(self):
-        with patch("getpass.getpass", side_effect=AssertionError("must not prompt")):
-            code, _, _ = self.call("auth")
-        self.assertEqual(code, 2)
+        for argv in (("auth",), ("login", "--method", "token")):
+            with self.subTest(argv=argv), patch("getpass.getpass", side_effect=AssertionError("must not prompt")):
+                code, _, _ = self.call(*argv)
+                self.assertEqual(code, 2)
         self.assertFalse(self.auth.exists())
 
     def test_auth_from_local_environment_does_not_echo_secret(self):
@@ -111,18 +112,128 @@ class CLITests(unittest.TestCase):
         self.assertNotIn(token, json.dumps(result) + err)
         self.assertEqual(json.loads(self.auth.read_text())["token"], token)
 
-    def test_web_token_auth_works_without_wechat_or_echoing_token(self):
+    def test_login_requires_explicit_method_without_terminal_prompts(self):
+        cases = ((["login", "--json"], True), (["login", "--non-interactive"], True), (["login"], False))
+        for argv, is_tty in cases:
+            out, err = io.StringIO(), io.StringIO()
+            with self.subTest(argv=argv), patch("sys.stdin.isatty", return_value=is_tty), \
+                    patch.dict(os.environ, {"AUTODL_WEB_TOKEN": "fictional-existing-env-token"}), \
+                    patch("builtins.input", side_effect=AssertionError("must not prompt")), \
+                    patch("getpass.getpass", side_effect=AssertionError("must not prompt")), \
+                    patch("autodl_rent.cli.AutoDL") as api, redirect_stdout(out), redirect_stderr(err):
+                code = main(argv)
+            self.assertEqual(code, 2)
+            self.assertIn("--method", err.getvalue())
+            api.assert_not_called()
+            if "--json" in argv:
+                self.assertEqual(json.loads(out.getvalue())["error"]["type"], "config")
+            else:
+                self.assertEqual(out.getvalue(), "")
+        self.assertFalse(self.auth.exists())
+
+    def test_token_login_from_environment_skips_prompts_and_qr(self):
+        token = "fictional-environment-login-token"
+        with patch.dict(os.environ, {"AUTODL_WEB_TOKEN": token}), \
+                patch("builtins.input", side_effect=AssertionError("must not prompt")), \
+                patch("getpass.getpass", side_effect=AssertionError("must not prompt")), \
+                patch("autodl_rent.cli.AutoDL") as api, patch("autodl_rent.cli.login_with_qr") as qr:
+            code, result, err = self.call("login", "--method", "token")
+        self.assertEqual(code, 0)
+        self.assertEqual(result["data"]["method"], "token")
+        api.assert_called_once_with(token)
+        api.return_value.images.assert_called_once_with()
+        qr.assert_not_called()
+        self.assertNotIn(token, json.dumps(result) + err)
+        self.assertEqual(json.loads(self.auth.read_text())["token"], token)
+
+    def test_interactive_token_login_accepts_menu_choice_after_invalid_input(self):
         token = "fictional-manual-web-token"
         out, err = io.StringIO(), io.StringIO()
-        with patch("sys.stdin.isatty", return_value=True), patch("getpass.getpass", return_value=token), \
+        with patch("sys.stdin.isatty", return_value=True), patch("builtins.input", side_effect=["", "3", "1,2", "2"]) as choice, \
+                patch("getpass.getpass", return_value=token) as hidden_input, \
                 patch("autodl_rent.cli.AutoDL") as api, patch("autodl_rent.cli.login_with_qr") as qr, \
                 redirect_stdout(out), redirect_stderr(err):
-            code = main(["auth"])
+            code = main(["login"])
         self.assertEqual(code, 0)
+        self.assertEqual(choice.call_count, 4)
+        hidden_input.assert_called_once()
+        self.assertIn("1. 微信扫码", out.getvalue())
+        self.assertIn("2. 输入网页登录 Token", out.getvalue())
+        api.assert_called_once_with(token)
         api.return_value.images.assert_called_once_with()
         qr.assert_not_called()
         self.assertEqual(json.loads(self.auth.read_text())["token"], token)
         self.assertNotIn(token, out.getvalue() + err.getvalue())
+
+    def test_interactive_qr_login_uses_selected_method(self):
+        token = "fictional-interactive-scanned-token"
+        out, err = io.StringIO(), io.StringIO()
+        with patch("sys.stdin.isatty", return_value=True), patch("builtins.input", return_value="1"), \
+                patch("getpass.getpass", side_effect=AssertionError("QR must not request Token input")), \
+                patch("autodl_rent.cli.AutoDL") as api, patch("autodl_rent.cli.login_with_qr", return_value=token) as qr, \
+                redirect_stdout(out), redirect_stderr(err):
+            code = main(["login", "--no-open"])
+        self.assertEqual(code, 0)
+        self.assertIn("2. 输入网页登录 Token", out.getvalue())
+        self.assertEqual(qr.call_args.args, (api.return_value, self.auth.parent.resolve() / "login-qr.jpg"))
+        api.return_value.images.assert_called_once_with()
+        self.assertEqual(json.loads(self.auth.read_text())["token"], token)
+        self.assertNotIn(token, out.getvalue() + err.getvalue())
+
+    def test_explicit_token_login_in_terminal_skips_menu(self):
+        token = "fictional-explicit-manual-token"
+        with patch("sys.stdin.isatty", return_value=True), \
+                patch("builtins.input", side_effect=AssertionError("must skip menu")), \
+                patch("getpass.getpass", return_value=token), patch("autodl_rent.cli.AutoDL") as api, \
+                redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            code = main(["login", "--method", "token"])
+        self.assertEqual(code, 0)
+        api.assert_called_once_with(token)
+        self.assertEqual(json.loads(self.auth.read_text())["token"], token)
+
+    def test_canceling_login_menu_preserves_existing_authentication(self):
+        write_private_json(self.auth, {"token": "fictional-previous-token"})
+        before = self.auth.read_bytes()
+        for error in (EOFError, KeyboardInterrupt):
+            with self.subTest(error=error), patch("sys.stdin.isatty", return_value=True), \
+                    patch("builtins.input", side_effect=error), patch("autodl_rent.cli.AutoDL") as api, \
+                    redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                code = main(["login"])
+            self.assertEqual(code, 130)
+            api.assert_not_called()
+            self.assertEqual(self.auth.read_bytes(), before)
+
+    def test_rejected_token_login_preserves_existing_authentication(self):
+        write_private_json(self.auth, {"token": "fictional-previous-token"})
+        before = self.auth.read_bytes()
+        with patch.dict(os.environ, {"AUTODL_WEB_TOKEN": "fictional-rejected-token"}), patch("autodl_rent.cli.AutoDL") as api:
+            api.return_value.images.side_effect = APIError("AuthorizeFailed", "Login expired")
+            code, result, err = self.call("login", "--method", "token")
+        self.assertEqual(code, 2)
+        self.assertEqual(result["error"]["code"], "AuthorizeFailed")
+        self.assertNotIn("fictional-rejected-token", json.dumps(result) + err)
+        self.assertEqual(self.auth.read_bytes(), before)
+
+    def test_browser_login_flags_still_dispatch_without_menu(self):
+        for argv in (("--browser", "chrome"), ("--method", "browser", "--browser", "chromium")):
+            with self.subTest(argv=argv), patch("builtins.input", side_effect=AssertionError("must skip menu")), \
+                    patch("autodl_rent.cli.browser_login", return_value=Result({"method": "browser"})) as browser, \
+                    patch("autodl_rent.cli.AutoDL") as api:
+                code, result, _ = self.call("login", *argv)
+            self.assertEqual(code, 0)
+            self.assertEqual(result["data"]["method"], "browser")
+            browser.assert_called_once()
+            api.assert_not_called()
+
+    def test_conflicting_browser_and_method_flags_fail_before_login(self):
+        for method in ("qr", "token"):
+            with self.subTest(method=method), patch("autodl_rent.cli.browser_login") as browser, \
+                    patch("autodl_rent.cli.AutoDL") as api:
+                code, result, _ = self.call("login", "--method", method, "--browser", "chrome")
+            self.assertEqual(code, 2)
+            self.assertIn("--browser", result["error"]["message"])
+            browser.assert_not_called()
+            api.assert_not_called()
 
     def test_qr_login_emits_image_event_and_keeps_token_local(self):
         token = "fictional-scanned-token"
@@ -133,8 +244,9 @@ class CLITests(unittest.TestCase):
             return token
 
         with patch("autodl_rent.cli.AutoDL") as api, patch("autodl_rent.cli.login_with_qr", side_effect=scan), patch("webbrowser.open") as browser:
-            code, result, err = self.call("login", "--no-open")
+            code, result, err = self.call("login", "--method", "qr", "--no-open")
         self.assertEqual(code, 0)
+        self.assertEqual(result["data"]["method"], "qr")
         self.assertEqual(json.loads(err), {"event": "login_qr", "path": str(image)})
         self.assertNotIn(token, json.dumps(result) + err)
         browser.assert_not_called()
@@ -143,7 +255,7 @@ class CLITests(unittest.TestCase):
 
     def test_invalid_login_timeout_does_not_request_challenge(self):
         with patch("autodl_rent.cli.login_with_qr") as qr:
-            code, _, _ = self.call("login", "--timeout", "nan")
+            code, _, _ = self.call("login", "--method", "qr", "--timeout", "nan")
         self.assertEqual(code, 2)
         qr.assert_not_called()
 
@@ -326,7 +438,11 @@ class CLITests(unittest.TestCase):
         self.assertEqual(result["data"]["entrypoint"], ["python3", "-m", "autodl_rent"])
         methods = {item["command"]: item for item in result["data"]["commands"]}
         self.assertFalse(methods["auth"]["requires_wechat_binding"])
-        self.assertTrue(methods["login"]["requires_wechat_binding"])
+        self.assertEqual(methods["auth"]["alias_for"], "login --method token")
+        self.assertEqual(methods["login"]["non_interactive_requires"], "--method")
+        self.assertTrue(methods["login --method qr"]["requires_wechat_binding"])
+        self.assertFalse(methods["login --method token"]["requires_wechat_binding"])
+        self.assertEqual(methods["login --method token"]["non_interactive_requires"], "AUTODL_WEB_TOKEN")
         schema = self.call("agent", "schema")[1]["data"]["schema"]
         self.assertEqual(schema, config_schema())
         pattern = schema["properties"]["image"]["properties"]["cuda_version"]["pattern"]

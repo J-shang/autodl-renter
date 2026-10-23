@@ -566,7 +566,7 @@ class QRLoginTests(unittest.TestCase):
             {"uuid": "test-login", "qrcode_url": "https://mp.weixin.qq.com/qrcode"}, {"openId": "unbound"},
         ]
         with patch("autodl_rent.qr_auth.qr_image", return_value=Path("/tmp/test-qr.jpg")):
-            with self.assertRaisesRegex(ConfigError, "autodl_rent auth"):
+            with self.assertRaisesRegex(ConfigError, "autodl_rent login --method token"):
                 login_with_qr(api, Path("/tmp/test-qr.jpg"), show=lambda p: None)
         self.assertEqual(api.request.call_count, 2)
 

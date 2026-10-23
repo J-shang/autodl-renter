@@ -62,12 +62,16 @@ python3 -m autodl_rent status --config config.job.local.json --json
 
 ## 登录与进程等待
 
-认证方式应根据账号情况选择。未关联微信的账号使用网页登录 Token 认证：由用户在浏览器登录 AutoDL，并在其本机终端执行 `python3 -m autodl_rent auth`，通过隐藏输入提供 Token。具体步骤见 [网页登录 Token 认证](usage.md#网页登录-token-认证)。Agent 不应要求用户通过聊天提供 Token；认证完成后，CLI 会自动读取本机认证文件，Agent 可继续调用任务命令。
+用户在本机交互终端执行 `python3 -m autodl_rent login`，即可选择微信扫码或输入网页登录 Token。Agent 和脚本应显式指定 `--method`；`--json`、`--non-interactive` 或非终端输入时不显示菜单，也不会自动选择登录方式。
 
-已关联微信的账号可在本机终端执行 `login`，也可由 Agent 发起扫码登录进程：
+已有调用 `login --json` 应改为 `login --method qr --json`。命令发现协议中，`login` 现描述方式选择，`requires_wechat_binding` 位于具体的 `login --method qr` 和 `login --method token` 条目；调用方应按所选方式读取。JSON 结果封装与退出码保持协议版本 `1`。
+
+未关联微信的账号使用网页登录 Token 认证：由用户在浏览器登录 AutoDL，并在其本机终端执行 `python3 -m autodl_rent login --method token`，通过隐藏输入提供 Token。具体步骤见 [网页登录 Token 认证](usage.md#网页登录-token-认证)。Agent 不应要求用户通过聊天提供 Token；认证完成后，CLI 会自动读取本机认证文件，Agent 可继续调用任务命令。若本机已设置 `AUTODL_WEB_TOKEN`，可调用 `login --method token --json` 验证并保存；未设置时返回错误，不等待输入。`auth` 作为兼容入口保留。
+
+已关联微信的账号可由 Agent 发起扫码登录进程：
 
 ```bash
-python3 -m autodl_rent login --no-open --json
+python3 -m autodl_rent login --method qr --no-open --json
 ```
 
 登录进程的 **stderr** 会立即输出：

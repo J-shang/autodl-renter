@@ -101,7 +101,7 @@ class AutoDL:
                 # Redact before truncating: a long token can cross the log limit.
                 message = message.replace(self.token, "[redacted]")
             if code == "AuthorizeFailed":
-                message = "网页登录已过期或未提供 Token；请重新运行 auth / login"
+                message = "网页登录已过期或未提供 Token；请重新运行 login"
             raise APIError(str(code), message[:300])
         return result.get("data")
 

@@ -16,6 +16,7 @@ from pathlib import Path
 from . import __version__
 from .api import APIError, AutoDL
 from .config import ConfigError, config_from_dict, example_config, is_cpu_model, load_config, number
+from .onboarding import choose_many
 from .onboarding import create_config as build_config
 from .output import Result, agent_manifest, config_schema, envelope, plan, resource_text, say, snapshot, table
 from .paths import ROOT, default_auth_file, user_home
@@ -42,7 +43,7 @@ def read_token(path: Path) -> str:
             auth = json.loads(path.read_text(encoding="utf-8"))
             token = auth["token"]
         except (KeyError, TypeError, ValueError, OSError):
-            raise ConfigError("认证文件无效，请重新运行 auth / login") from None
+            raise ConfigError("认证文件无效，请重新运行 login") from None
     return validate_token(token)
 
 
@@ -58,7 +59,7 @@ def validate_token(token: str) -> str:
 def make_api(args, *, required=False, config=None) -> AutoDL:
     token = read_token(args.auth_file)
     if required and not token:
-        raise ConfigError("尚未认证：已关联微信可运行 login；未关联微信可运行 auth 输入网页登录 Token，或在本机设置 AUTODL_WEB_TOKEN；Token 不应通过聊天发送")
+        raise ConfigError("尚未认证：请运行 login 选择微信扫码或输入网页登录 Token，或在本机设置 AUTODL_WEB_TOKEN；Token 不应通过聊天发送")
     poll = config.poll if config else {}
     api = AutoDL(token, timeout=poll.get("timeout_seconds", 20), request_gap=poll.get("request_gap_seconds", 1))
     try:
@@ -83,7 +84,7 @@ def authenticate(args):
     token = validate_token(os.environ.get("AUTODL_WEB_TOKEN", ""))
     if not token:
         if args.non_interactive:
-            raise ConfigError("非交互 auth 需要本机 AUTODL_WEB_TOKEN；未设置时，请在本机终端运行 auth，通过隐藏输入提供网页登录 Token")
+            raise ConfigError("非交互 Token 登录需要本机 AUTODL_WEB_TOKEN；未设置时，请在本机终端运行 login --method token，通过隐藏输入提供网页登录 Token")
         say(args, "在已登录的 AutoDL 网页开发者工具 Console 执行：copy(localStorage.getItem('token'))")
         say(args, "在下方粘贴结果（隐藏输入；不要将 Token 发到聊天中）。")
         token = validate_token(getpass.getpass("AutoDL 网页登录 Token: "))
@@ -92,14 +93,14 @@ def authenticate(args):
     AutoDL(token).images()
     write_private_json(args.auth_file, {"token": token})
     say(args, f"登录验证成功，已保存到本机：{args.auth_file}")
-    return Result({"authenticated": True, "auth_file": str(args.auth_file)})
+    return Result({"authenticated": True, "auth_file": str(args.auth_file), "method": "token"})
 
 
 def browser_login(args):
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        raise ConfigError("浏览器登录助手需要可选依赖 Playwright；无需安装依赖的方式为 auth 导入网页登录 Token，或 login 使用已关联微信扫码") from None
+        raise ConfigError("浏览器登录助手需要可选依赖 Playwright；可直接运行 login 选择微信扫码或输入网页登录 Token，无需安装依赖") from None
     profile = args.auth_file.parent / "browser-profile"
     profile.mkdir(parents=True, exist_ok=True)
     if os.name != "nt":
@@ -149,7 +150,19 @@ def browser_login(args):
 
 def login(args):
     number(args.timeout, "--timeout", 1, 3600)
-    if args.method == "browser" or args.browser:
+    method = args.method
+    if args.browser:
+        if method not in (None, "browser"):
+            raise ConfigError("--browser 只能与 --method browser 一起使用，或单独使用")
+        method = "browser"
+    if method is None:
+        if args.non_interactive:
+            raise ConfigError("非交互 login 需要显式指定 --method qr、--method token 或 --method browser")
+        methods = {"微信扫码（需已关联 AutoDL 账号）": "qr", "输入网页登录 Token（无需微信绑定）": "token"}
+        method = methods[choose_many("请选择登录方式", list(methods), single=True)[0]]
+    if method == "token":
+        return authenticate(args)
+    if method == "browser":
         return browser_login(args)
     api = AutoDL()
 
@@ -431,7 +444,7 @@ def add_common(item, *, root=False):
 
 def parser() -> argparse.ArgumentParser:
     root = Parser(prog="python3 -m autodl_rent", description="AutoDL 算力抢租 · 零依赖，默认预览，--execute 才会真实租用",
-                  epilog="无需安装，在源码目录直接运行。\n身份认证：login（已关联微信）或 auth（网页登录 Token，无需微信绑定）。\n使用流程：demo → 认证 → init → run → run --execute",
+                  epilog="无需安装，在源码目录直接运行。\n身份认证：login 选择微信扫码或输入网页登录 Token。\n使用流程：demo → login → init → run → run --execute",
                   formatter_class=argparse.RawDescriptionHelpFormatter, allow_abbrev=False)
     root.add_argument("--version", action="version", version=f"autodl-renter {__version__}")
     add_common(root, root=True)
@@ -443,11 +456,11 @@ def parser() -> argparse.ArgumentParser:
         item.set_defaults(handler=handler)
         return item
 
-    command("auth", "导入并验证网页登录 Token，无需微信绑定", authenticate)
-    item = command("login", "微信扫码登录（默认，零依赖），或选择浏览器登录", login)
-    item.add_argument("--method", choices=("qr", "browser"), default="qr")
+    command("auth", "兼容入口，等同于 login --method token", authenticate)
+    item = command("login", "选择微信扫码或输入网页登录 Token，均无需额外依赖", login)
+    item.add_argument("--method", choices=("qr", "token", "browser"), help="直接指定登录方式；非交互调用时必须指定")
     item.add_argument("--browser", choices=("chromium", "chrome"), help="使用可选浏览器登录助手")
-    item.add_argument("--timeout", type=float, default=300, help="登录最长等待秒数（默认 300）")
+    item.add_argument("--timeout", type=float, default=300, help="扫码或浏览器登录最长等待秒数（默认 300）")
     item.add_argument("--no-open", action="store_true", help="只显示二维码路径，不自动打开")
     item = command("catalog", "查询实时地区、GPU / CPU 和基础镜像目录", catalog)
     item.add_argument("kind", choices=("regions", "gpus", "images"))

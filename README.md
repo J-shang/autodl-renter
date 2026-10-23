@@ -17,7 +17,7 @@ cd autodl-renter
 
 ```bash
 python3 -m autodl_rent demo           # 离线演示
-python3 -m autodl_rent login          # 微信扫码；未绑定微信时改用 auth
+python3 -m autodl_rent login          # 选择微信扫码或输入网页登录 Token
 python3 -m autodl_rent init           # 交互生成任务配置
 python3 -m autodl_rent run            # 预览匹配结果
 python3 -m autodl_rent run --execute  # 按配置执行租用任务
@@ -25,7 +25,7 @@ python3 -m autodl_rent run --execute  # 按配置执行租用任务
 
 Windows 环境可将 `python3` 替换为 `py -3` 或本机的 `python`。
 
-身份认证支持两种方式：已关联微信的账号使用 `login` 扫码；未关联微信的账号可在浏览器登录 AutoDL 后，运行 `python3 -m autodl_rent auth`，在本机终端的隐藏输入中提供网页登录 Token。Token 获取步骤见 [网页登录 Token 认证](docs/usage.md#网页登录-token-认证)。两种方式均无需安装额外依赖。
+运行 `login` 后，按提示选择微信扫码或输入网页登录 Token。扫码需要账号已关联微信；Token 方式无需微信绑定，通过本机终端的隐藏输入提供。两种方式均无需安装额外依赖，具体步骤见 [登录说明](docs/usage.md#登录方式)。
 
 默认运行模式为预览，仅添加 `--execute` 时才允许创建按量计费实例。停止程序不会关闭已创建的实例；小时价格上限不等同于累计支出限额。
 
