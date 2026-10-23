@@ -6,13 +6,13 @@
 
 | `stop.policy` | 行为 | 适合的需求 |
 | --- | --- | --- |
-| `any` | 任意一个实例创建并确认存在后立即停止 | “4090 或 3090，抢到任意一个就行” |
-| `all` | 每个目标都达到各自的 `quantity` 后停止 | “4090 一台、3090 一台，两种都要” |
-| `total` | 累计成功 `total_instances` 个实例后停止，同时遵守各目标配额 | “两种型号都可，累计抢到三台” |
+| `any` | 任意一个实例创建并确认存在后立即停止 | 4090 或 3090，任选一个实例 |
+| `all` | 每个目标都达到各自的 `quantity` 后停止 | 分别创建一个 4090 实例和一个 3090 实例 |
+| `total` | 累计成功 `total_instances` 个实例后停止，同时遵守各目标配额 | 4090 或 3090，累计创建三个实例 |
 
 **数量单位是实例。** `quantity: 2, gpus_per_instance: 1` 是两个单卡实例；`quantity: 1, gpus_per_instance: 2` 是一个双卡实例。`any` 总是在第一个实例成功后停止，即使该目标的 `quantity` 大于 1。
 
-一个目标中多个 `regions` 是任选地区，多个 `gpu_models` 是任选型号。需要“每种型号都抢到”时，将每种型号写成独立目标；需要“每个地区都抢到”时，也应拆成独立目标。一次创建只计入一个目标。
+同一目标中的多个 `regions` 表示可选地区，多个 `gpu_models` 表示可选型号。若要求每种型号均有实例，应将各型号定义为独立目标；若要求每个地区均有实例，应按地区定义独立目标。一次实例创建仅计入一个目标。
 
 `selection: "priority"` 按目标在配置中的顺序尝试，同一目标按列表原价从低到高寻找；发现可用候选立即提交前校验。`selection: "cheapest"` 先扫描所有目标，再按单实例小时原价排序；扫描范围更大，首次提交可能更慢。
 
@@ -26,7 +26,7 @@ python3 -m autodl_rent init --template
 
 模板中的价格是**配置示例，不是当前市场报价**。模板的 `image.uuid` 留空，需要先选择实际镜像，才允许真实执行。
 
-给 agent 或脚本使用时，可以完全通过参数离线生成配置：
+Agent 或脚本可通过命令行参数离线生成配置：
 
 ```bash
 python3 -m autodl_rent init --config config.job.local.json \
@@ -60,7 +60,7 @@ python3 -m autodl_rent validate --config config.job.local.json --json
 | `image.chip_corp` / `image.cpu_arch` | 当前支持 `nvidia` / `x86` |
 | `state_file` | 持久化任务进度；相对路径以配置文件目录为基准 |
 
-例如将配置中的停止条件改成以下内容，就会等待每个目标达标：
+以下停止条件表示等待各目标均达到配额：
 
 ```json
 "stop": {"policy": "all"}

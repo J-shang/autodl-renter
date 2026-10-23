@@ -1,26 +1,26 @@
-# 让 agent 直接操作
+# Agent 操作指南
 
 [返回首页](../README.md) · [配置说明](configuration.md) · [使用与恢复](usage.md)
 
-只要 agent 能读取文件并运行 Python 命令，就可以使用本工具。下载仓库、进入根目录，让它阅读 [AGENTS.md](../AGENTS.md) 即可。正常使用不需要安装 Skill、SDK 或 MCP 服务。
+支持文件读取与 Python 命令执行的 Agent 可依据 [AGENTS.md](../AGENTS.md) 操作本项目。调用时应以仓库根目录为工作目录。常规使用无需安装 Skill、SDK 或 MCP 服务。
 
-## 给 agent 的提示词
+## 指令示例
 
 仅查询：
 
-> 阅读 AGENTS.md，帮我找西北B区或北京B区的 RTX 4090，一个单卡实例，每小时原价不超过 3 元，总小时价格上限 3 元。先预览，不要实际租用。如果需要登录，给我展示二维码，我来扫码。
+> 请阅读 AGENTS.md，检索西北B区或北京B区的 RTX 4090。要求为一个单卡实例，单卡小时原价与总小时价格上限均为 3 元。仅预览库存，不创建实例。若需要登录，请展示二维码，由用户完成扫码。
 
 明确授权租用：
 
-> 按刚才核对的配置开始租用，最多等待 20 分钟，成功一个就停。不要增加地区、型号、数量或预算；已有任务继续使用原状态。
+> 请按已核对的配置执行租用任务，最长等待 20 分钟，创建并确认一个实例后停止。保持既定地区、型号、数量与价格上限；恢复已有任务时继续使用原状态文件。
 
 处理恢复：
 
-> 读取 config.job.local.json 的任务状态，说明已经创建的实例和未确认请求。先核对 pending，不要删除记录或盲目重试。
+> 请读取 config.job.local.json 的任务状态，列出已创建实例与未确认请求。存在 pending 时应先进行核对，不得删除记录或在结果未知时重新提交创建请求。
 
-授权租用的提示词会产生真实费用。二维码仅用于用户亲自登录，不代表授权租用。
+执行已获授权的租用任务可能产生实际费用。扫码登录仅用于身份认证，不构成付费租用授权。
 
-## 发现接口
+## 命令发现
 
 ```bash
 python3 -m autodl_rent agent --json
@@ -28,11 +28,11 @@ python3 -m autodl_rent agent schema
 python3 -m autodl_rent agent skill
 ```
 
-`agent` 返回可用命令、作用、认证方式和退出码；`agent schema` 返回配置 JSON Schema，供编辑器或 agent 生成配置。Python 的 `validate` 还会检查跨字段约束、任务指纹和状态记录。
+`agent` 返回可用命令、作用、认证方式和退出码；`agent schema` 返回配置 JSON Schema，供编辑器或 Agent 生成配置。`validate` 命令还会校验跨字段约束、任务指纹和状态记录。
 
-`agent skill` 输出独立的 [操作 Skill](../autodl_rent/resources/autodl-renter/SKILL.md)。支持 Skill 的客户端可以读取或自行导入它；一次性使用直接读取文件即可。
+`agent skill` 输出独立的 [操作 Skill](../autodl_rent/resources/autodl-renter/SKILL.md)。支持 Skill 的客户端可直接读取或导入该文件，临时调用无需安装。
 
-## 不弹出输入提示的完整流程
+## 非交互调用
 
 以下价格与型号用于展示参数格式，实际值以用户约束和实时目录为准：
 
@@ -62,7 +62,7 @@ python3 -m autodl_rent status --config config.job.local.json --json
 
 ## 登录与进程等待
 
-优先让用户在自己的终端执行 `login`，或由 agent 运行：
+用户可在本机终端执行 `login`，也可由 Agent 发起登录进程：
 
 ```bash
 python3 -m autodl_rent login --no-open --json
@@ -74,9 +74,9 @@ python3 -m autodl_rent login --no-open --json
 {"event":"login_qr","path":"/path/to/checkout/.local/login-qr.jpg"}
 ```
 
-agent 展示该本地图片，让用户用已关联 AutoDL 账号的微信扫码。进程默认等待最多 300 秒，登录成功后将认证保存到本机，并向 stdout 输出最终 JSON。不要因单次工具等待结束就重新启动登录进程；保留进程会话并继续读取它的输出。租用进程也使用相同的会话管理方式。
+Agent 应展示该本地图片，由用户通过已关联 AutoDL 账号的微信扫码。进程默认最多等待 300 秒；登录成功后将认证保存至本机，并向 stdout 输出最终 JSON。单次工具调用等待结束不表示登录进程已终止，应保留进程会话并继续读取输出。租用进程采用相同的会话管理方式。
 
-无图片展示能力的 agent 可把图片路径告诉用户，用户在本机打开。Token 不应出现在提示词、命令参数或聊天中；已设置的 `AUTODL_WEB_TOKEN` 会优先于认证文件。
+不具备图片展示能力的 Agent 可提供本地图片路径，由用户自行打开。Token 不应出现在提示词、命令参数或聊天中；已设置的 `AUTODL_WEB_TOKEN` 优先于认证文件。
 
 ## JSON 协议
 
@@ -102,16 +102,16 @@ agent 展示该本地图片，让用户用已关联 AutoDL 账号的微信扫码
 }
 ```
 
-不同命令的 `data` 有各自字段，调用方应允许新增字段。金额摘要使用十进制字符串，避免将二进制浮点数当作精确价格。`run` 预览包含 `offers`、`matches` 和 `offers_truncated`，最多返回前 100 个候选；人类表格显示前 20 个。`matches` 是实际扫描到的匹配数，达到页数限制或截止时间时不代表完整市场库存。
+不同命令的 `data` 包含不同字段，调用方应兼容新增字段。金额摘要使用十进制字符串，避免二进制浮点数造成精度误差。`run` 预览包含 `offers`、`matches` 和 `offers_truncated`，最多返回前 100 个候选；终端表格显示前 20 个。`matches` 表示实际扫描到的匹配数量，达到页数限制或截止时间时不代表完整市场库存。
 
-| 退出码 | 含义 | agent 如何处理 |
+| 退出码 | 含义 | 处理方式 |
 | --- | --- | --- |
-| `0` | 预览结束、目标已完成或命令成功 | 看 `data.mode`、`data.done`，不要只凭 0 判断已租到 |
-| `2` | 参数、配置、登录或确定的接口错误 | 读取 `error`；`doctor` 的诊断失败看 `data.checks` |
+| `0` | 预览结束、目标已完成或命令成功 | 读取 `data.mode`、`data.done`，不能仅依据退出码判断实例已创建 |
+| `2` | 参数、配置、登录或确定的接口错误 | 读取 `error`；`doctor` 的诊断失败信息位于 `data.checks` |
 | `3` | 等待结束或单轮未完成目标 | 读取已完成数量，在原任务范围内决定是否继续 |
-| `4` | 创建结果待核对 | 停止创建，走恢复流程，禁止直接重试 |
+| `4` | 创建结果待核对 | 停止创建，执行恢复流程，不得直接重试 |
 | `130` | 用户中断或输入结束 | 查看状态后再恢复 |
 
 `status` 成功读取 pending 时仍返回 `0`；这只表示读取成功。离线 `doctor` 对未登录、尚未配置等首次使用状态返回 `0` 和 `ready: false`；无效配置或联网检查失败返回 `2`。
 
-遇到未知创建结果，`run` 会在错误结果的 `data.pending` 保留恢复信息。详见 [任务恢复](usage.md#查看进度和恢复)。不要假设 `--checked-console` 是普通确认按钮：它声明控制台已经实际核对。
+创建结果未知时，`run` 会在错误结果的 `data.pending` 中保留恢复信息，详见 [任务恢复](usage.md#查看进度和恢复)。`--checked-console` 表示已在控制台完成实际核对，仅在取得相应依据后方可使用。

@@ -4,14 +4,14 @@
 
 ## 开始使用
 
-已有 Python 3.9+ 就能运行，不需要安装项目或依赖。下载并解压仓库（或 clone）后，以下命令均在仓库根目录执行；Windows 可将 `python3` 换成 `py -3` 或本机 `python`。
+运行环境为 Python 3.9 或更高版本。核心功能仅依赖 Python 标准库，可在下载或克隆的源码目录直接运行。以下命令均在仓库根目录执行；Windows 环境可将 `python3` 替换为 `py -3` 或本机的 `python`。
 
 ```bash
-# 可选：先运行离线演示，无网络请求，不产生费用
+# 可选：运行离线演示，不发送网络请求，不产生费用
 python3 -m autodl_rent demo --policy any
 python3 -m autodl_rent demo --policy all
 
-# 1. 用已关联 AutoDL 账号的微信扫码登录
+# 1. 通过已关联 AutoDL 账号的微信扫码登录
 python3 -m autodl_rent login
 
 # 2. 按提示选择地区、型号、数量、价格、停止策略和基础镜像
@@ -20,21 +20,21 @@ python3 -m autodl_rent init
 # 3. 查看一轮匹配结果，不创建实例
 python3 -m autodl_rent run
 
-# 4. 使用刚才的配置开始实际抢租
+# 4. 按生成的配置执行租用任务
 python3 -m autodl_rent run --execute
 ```
 
 `login` 默认通过 Python HTTPS 请求获取 AutoDL 原生登录二维码，自动在本机打开图片；需要手动打开时加 `--no-open`。账号必须已关联该微信。默认最长等待 300 秒，可用 `--timeout` 调整。扫码成功后只读验证登录并保存认证，无需 Playwright。
 
-也可以运行 `auth`，隐藏输入**主账号网页登录 Token**。在已登录的 [AutoDL 市场](https://www.autodl.com/market/list) 打开浏览器开发者工具的 Console，执行 `copy(localStorage.getItem('token'))`，再粘贴到本机终端。或通过本机环境变量 `AUTODL_WEB_TOKEN` 提供，`auth` 会直接使用它。不要把 Token 填入配置或发送到聊天中。这里不是控制台中的开发者 API Token。
+也可运行 `auth`，以隐藏输入方式提供**主账号网页登录 Token**。在已登录的 [AutoDL 市场](https://www.autodl.com/market/list) 打开浏览器开发者工具的 Console，执行 `copy(localStorage.getItem('token'))`，再粘贴至本机终端。也可通过本机环境变量 `AUTODL_WEB_TOKEN` 提供，`auth` 会优先读取该变量。Token 不应写入任务配置或通过聊天发送。此处使用网页登录 Token，与控制台中的开发者 API Token 不同。
 
 认证默认保存在项目 `.local/auth.json`，macOS/Linux 上文件权限为 `600`；`.local/` 已加入 Git 忽略。环境变量优先于认证文件。使用其他认证文件时可加 `--auth-file /path/auth.json`；也可用 `AUTODL_RENT_HOME` 改变认证、二维码和可选浏览器配置的默认目录。`--auth-file`、`--config`、`--json` 和 `--non-interactive` 均可放在子命令前后。
 
 `python3 -m autodl_rent doctor` 离线检查本机认证和配置；加 `--online` 只读核对连接与登录。`validate` 检查当前任务配置和状态；`validate --online` 进一步核对地区、型号和镜像，不创建实例。
 
-### 可选：弹出浏览器手动登录
+### 可选浏览器登录
 
-默认扫码不需要此步骤。如果需要在独立浏览器中登录，可安装可选助手：
+默认扫码登录无需浏览器依赖。如需在独立浏览器中登录，可安装可选助手：
 
 ```bash
 python3 -m venv .venv
@@ -46,16 +46,16 @@ python3 -m autodl_rent login --method browser
 
 在弹出的独立浏览器中手动完成登录和验证码。程序随后验证并保存 Token；不自动处理验证码。已有 Chrome 也可以使用 `login --browser chrome`。登录配置目录在 `.local/browser-profile/`，包含登录状态。安装方法依据 [Playwright Python 文档](https://playwright.dev/python/docs/library)。
 
-## 纯程序快速抢租：西北B区、低于1元、成功一个就停
+## 快速租用预设
 
 ```bash
-python3 -m autodl_rent quick            # 只预览
-python3 -m autodl_rent quick --execute  # 实际租用
+python3 -m autodl_rent quick            # 预览
+python3 -m autodl_rent quick --execute  # 执行租用任务
 ```
 
-这个预设直接通过 Python HTTPS 请求查询、报价和创建，不使用 computer use，也不读取 Chrome 私有数据。先用统一的 `login` 命令扫码登录即可。它自动创建 `config.west-under1.local.json`，状态保存在 `.local/west-under1.state.json`。
+该预设通过 Python HTTPS 请求完成库存查询、报价与实例创建，无需界面自动化，也不读取浏览器私有数据。运行前需使用 `login` 命令完成认证。配置保存为 `config.west-under1.local.json`，状态保存于 `.local/west-under1.state.json`。
 
-条件固定为西北B区、GPU 或 CPU 均可、一个单资源单位实例、小时原价严格低于 1 元，成功一个即停止。用 `0.999` 元上限排除恰好 1 元的资源。采用基础 Miniconda 镜像，不扩容付费数据盘。默认每次最多等待 1800 秒，可用 `--wait-seconds` 调整；省略 `--execute` 只预览。程序保存任务配置与状态，同一任务重复运行不会重复租用。查看或恢复这个任务时指定其配置：
+固定条件为西北B区、GPU 或 CPU、一个单资源单位实例、小时原价严格低于 1 元。创建并确认一个实例后，任务停止。价格上限设为 `0.999` 元，以排除恰好 1 元的资源。预设采用基础 Miniconda 镜像，不扩容付费数据盘。默认每次最多等待 1800 秒，可通过 `--wait-seconds` 调整；未指定 `--execute` 时仅预览库存。任务配置与状态会持久化，重复运行同一任务不会重复创建已完成的实例。查看或恢复该任务时需指定其配置：
 
 ```bash
 python3 -m autodl_rent status --config config.west-under1.local.json
@@ -75,7 +75,7 @@ python3 -m autodl_rent run --execute --once
 
 `status` 无需联网，会显示各目标已成功的数量、实例 ID 和待核对请求。`--once` 只扫描一轮，该轮仍可能为不同目标创建多个实例。
 
-程序先把创建意图落盘，再提交创建。相同状态文件使用系统文件锁，防止同时启动两个进程。请求超时、HTTP 500、未知创建响应或确认超时都保留 `pending` 并暂停，避免重试造成重复租用。
+程序先持久化创建意图，再提交创建请求。访问同一状态文件的进程通过系统文件锁互斥。请求超时、HTTP 500、未识别的创建响应或确认超时均会保留 `pending` 并暂停后续创建，避免重试导致重复租用。
 
 若已经取得实例 ID，重新执行 `run --execute` 会先只读确认此实例；也可以单独运行：
 
@@ -83,7 +83,7 @@ python3 -m autodl_rent run --execute --once
 python3 -m autodl_rent resolve
 ```
 
-若网络中断导致没有拿到实例 ID，先在控制台按 `grab-<attempt_id>` 备注、时间、主机和型号核对。确认已经创建时，用对应实例 ID 记入进度：
+若网络中断导致未取得实例 ID，应先在控制台依据 `grab-<attempt_id>` 备注、提交时间、主机和型号进行核对。确认实例已创建后，使用对应实例 ID 更新任务进度：
 
 ```bash
 python3 -m autodl_rent resolve --instance <对应实例ID>
@@ -95,6 +95,6 @@ python3 -m autodl_rent resolve --instance <对应实例ID>
 python3 -m autodl_rent resolve --not-created --checked-console
 ```
 
-不要通过删除状态文件来恢复未确认请求。同一任务继续使用同一 `state_file`；新的独立任务使用新状态路径。不要跨账号复用任务状态，也不要为同一任务并行使用不同状态文件，否则文件锁无法互相协调。修改目标、策略、镜像或预算会触发配置指纹校验，避免忘记既有实例后重复租用；轮询参数和单次等待时长可以调整。
+未确认请求应通过核对流程处理，不应删除状态文件。同一任务必须继续使用同一 `state_file`；独立的新任务应使用新的状态路径。任务状态不应跨账号复用，同一任务也不应并行使用不同状态文件，否则无法通过文件锁实现互斥。修改目标、策略、镜像或预算会触发配置指纹校验，防止已有记录被忽略后重复创建实例；轮询参数和单次等待时长可以调整。
 
 退出码：`0` 完成目标或结束预览，`2` 配置/登录/确定的接口错误，`3` 等待超时或单轮未达标，`4` 有待核对创建结果，`130` 手动中断。
