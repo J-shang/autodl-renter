@@ -1,0 +1,3 @@
+# Optional: only the `login` browser helper uses this dependency.
+# The core renter and `auth` / `demo` / tests use Python's standard library.
+playwright>=1.49,<2

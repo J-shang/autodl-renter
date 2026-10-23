@@ -1,0 +1,32 @@
+# Local authentication, browser captures, and account-specific records
+.local/
+**/.local/
+.playwright-mcp/
+.env
+.env.*
+!.env.example
+auth.json
+auth.*.json
+*.pem
+*.key
+browser-profile/
+storage-state*.json
+qr-login.json
+*login-qr.jpg
+*login-qr.png
+*.state.json
+*.state.json.lock
+*.runtime.json
+*.har
+*.log
+
+# Generated user configuration; keep config.example.json public
+config.json
+config.*.local.json
+
+# Python and editor output
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.DS_Store
